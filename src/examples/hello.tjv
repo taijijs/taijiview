@@ -1,0 +1,70 @@
+let math = require 'math'
+
+html
+  head
+    link public/css/style.css
+    script javascript
+      if (1===2) {
+        console.log('hello');
+      }
+  // this line is comment which will not be output to html
+  //- this line is comment, and will be output to html
+  body // this is a line tail comment
+    .main#main   // div can be omitted
+      p: hello  // start text with : line tail comment
+    ul > li:item1; li:item2 // multiple tags can be separated with semicolons.
+    pre
+    : some text
+    ::to start
+      multiple line
+      text can be;
+      just use ::
+    :\: : can be escaped
+    a /user.html: user // content between tag and comma is attributes.
+    include path/to/other.tjv
+    block // a template can have only one default block with no name
+      // below is default content for this block
+      : default content for this bolock
+    block a // a template can have multiple named block
+    block b
+    if some.condition is true: some condition is true
+    else: some condition is false
+    ul
+      for item, index in someList
+        li>p: item index
+      else: nothing in the list
+
+      let i=0
+      while i<someList.length
+        li> p: someList[i]
+        i++
+      else: nothing in the list
+
+      switch what
+        case 1 then p: 1
+        case 2 then p: 2
+        else: default content for ?what
+
+      // new syntax can be defined on the fly in taijiview
+      syntax year y1@1|2 y2@digit y3@digit y4@digit
+        :! y1 y2 y3 y4 // ! indicate to produce compact output by removing spaces between items
+
+      syntax month m1@0|1|empty m2@dight
+        let m = :! m1 m2
+        assert 1<=int(m)<=12
+        m
+
+      syntax datetime year@year @spaces - month@month - day@day =>
+        input: year; input: month; input: day
+
+      datetime 2014-3-3
+
+
+
+
+
+
+
+
+
+
