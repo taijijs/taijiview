@@ -2,13 +2,13 @@
  extensible
  pragma
  configurable: attriblue separator, interplation delimitor, text starter, text ender
+ define syntax on the fly
 ###
 
 path = require('path')
 extname = path.extname
 
 {debug, warn} = peasy = require 'peasy'
-
 
 nodes = require('./nodes')
 
@@ -19,7 +19,42 @@ exports = module.exports = class Parser extends peasy.Parser
   constructor: ->
     super
 
-    {memo, orp, char, may, any, eoi, identifier, follow, wrap, list, literal, select, base} = self = @
+    {memo, orp, char, may, any, eoi, identifier, follow, wrap, list, literal, select, base
+    string} = self = @
+
+    @parse = (data, root=self.root, cur=0) -> super; self.lineno = 0; self.row = 0
+    @parseFile = (file) ->
+    @char = (c) -> -> 
+      if self.data[self.cur]==c
+        self.cur++
+        #\r\n, or \n
+        if c=='\n' then self.lineno++; self.row = 0
+        else self.row++
+        c
+    @step = ->
+      if (c=self.data[self.cur])=='\n' then self.lineno++
+      else self.row++
+      c
+
+    spaces = @spaces = ->
+      data = self.data
+      len = 0
+      cur = self.cur
+      while 1
+        if ((c=data[cur++]) and (c==' ' or c=='\t')) then len++ else break
+      self.cur += len; self.row += len
+      len+1
+
+    # matcher *spaces1*<br/>
+    # one or more whitespaces, ie. space or tab.<br/>
+    spaces1 = @spaces1 = ->
+      data = self.data
+      cur = self.cur
+      len = 0
+      while 1
+        if ((c=data[cur++]) and (c==' ' or c=='\t')) then lent++ else break
+      self.cur += len; self.row += len
+      len
 
     lex = @lex =
       tjBibindLeft: '{{'
@@ -37,6 +72,9 @@ exports = module.exports = class Parser extends peasy.Parser
       attrsLeftDelimiter: -> true
       attrsRightDelimiter: -> follow(orp(blockStart, lineComment))()
       identifier: identifier
+      operators:
+        assign: char('=')
+        attrAssign: char('=')
 
     identifier = -> lex.identifier()
 
@@ -44,11 +82,17 @@ exports = module.exports = class Parser extends peasy.Parser
 
     render = @render = new Render()
 
-    nonQuotedAttrValue = ->  # non quoted string or expression
-    quotedAttrValue = -> # quoted string or expression
-    @attrValue = -> orp(nonQuotedAttrValue, quotedAttrValue)
-    @attrAssign = may(-> lex.op.attrAssign() and attrValue())
-    @tagAttr = -> (name = identifier()) and (value=attrAssign()) and [name, value]
+    @error = (msg) -> throw self.data[self.cur-20..self.cur+20]+' '+self.cur+': '+msg
+    @expect = (match, message) -> match() or self.error(message)
+
+    @nonQuotedAttrValue = ->  # non quoted string or expression
+    @quotedAttrValue = -> string()
+    @attrValue = -> orp(self.nonQuotedAttrValue, self.quotedAttrValue)
+    @attrAssign = may(-> lex.operators.attrAssign() and expect(self.attrValue(), 'expect attribute value'))
+    @tagAttr = ->
+      if (name = identifier()) and (value=self.attrAssign())
+        if value==true then nodes.Attr(name)
+        else nodes.Attr(name, value)
     @attrs = -> wrap(list(self.tagAttr, lex.attrSeparator), lex.attrsLeftDelimiter, lex.attrsRightDelemiter)
     lineTailStmt = ->
     tagContent = -> lineTailStmt() and mayIndentBlockStmt()
@@ -61,10 +105,9 @@ exports = module.exports = class Parser extends peasy.Parser
     statements['if'] = -> expression() and block()
 
     @pragmaDirectives =
-      'css-coding-style' : ->
+      'css-coding-style': ->
 
     statements.pragma = -> (name = pragmaName()) and select self.pragmaDiretives[name]
-
     statements.include = ->
     statements['switch'] = ->
     statements.comment = ->
@@ -87,16 +130,12 @@ exports = module.exports = class Parser extends peasy.Parser
       textStarter: statements.text
       comment: statements.comment
       syntax: statements.syntax
-      #inlinecomment: inlineComment
       '': statements.errorOnStatementBegin # 'default': error
     @root = @statementList = any(self.statement)
 
-    @init = (text='', start=0) -> self.text = text; self.cur = start; self
-    @parseFile = (file) ->
 
-parser =exports.parser = new Parser()
+parser = exports.parser = new Parser()
 
-exports.parse = (text, cursor=0, start=parser.root) ->
-  if typeof cursor=='function' then  start = cursor; cursor = 0
-  parser.init(text, cursor)
-  start()
+exports.parse = (text, root=self.root, cursor=0) ->
+  if typeof root=='number' then  cursor = root; root = self.root
+  parser.parse(text, root, cursor)

@@ -9,8 +9,10 @@ expect = chai.expect
 describe "parser",  ->
   xit 'should parse "p: 1"', ->
     expect(parse('p: 1')).to.equal 1
-  xit 'should (parse "p: 1", parser.tag)', ->
-    expect(parse('p: 1', parser.tagStmt)).to.equal 1, tag.p({}, 1)
+  xit 'should parse "p: 1", parser.tag', ->
+    expect(parse('p: 1', parser.statements.tag)).to.equal 1, tag.p({}, 1)
+  it.only 'should parse id, parser.tagAttr', ->
+    expect(parse('id', parser.tagAttr)).to.deep.equal nodes.attr('id')
 
 describe 'render', ->
   it 'should render <p>1</p>', ->

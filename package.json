@@ -33,6 +33,7 @@
     "connect-livereload": "~0.3.2"
   },
   "repository": "git://github.com/taijijs/taijiview",
+  "main": "dist/index.js",
   "scripts": {
     "prepublish": "npm prune",
     "test": "gulp test"
