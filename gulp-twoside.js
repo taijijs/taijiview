@@ -24,20 +24,18 @@ module.exports = function(basepath, packageName, pathMap) {
     var slashLastIndex = padpath.lastIndexOf("/");
     var filename = padpath.slice(slashLastIndex+1);
     if (filename==='twoside.js') { this.emit('data', file); return;}
-    var mappath = removeExtname(padpath).slice(packageName.length);
-    console.log(mappath);
+    var mappath = removeExtname(padpath).slice(packageName.length+1);
+    //console.log(mappath);
     if (pathMap[mappath]!==undefined)
-      if (pathMap[mappath]!=='') padpath = packageName+pathMap[mappath];
+      if (pathMap[mappath]!=='') padpath = packageName+'/'+pathMap[mappath];
       else padpath = packageName;
-
-//    console.log(filename);
-
+    //console.log(padpath);
     var head, foot;
     if (pathMap['only_wrap_for_browser']) {
-      head = "/* wrap line by gulp-twoside for providing twoside module*/; (function() {var ts = twoside('" + padpath + "'), require = ts.require, exports = ts.exports, module = ts.module; \n\n";
+      head = "(function() {var ts = twoside('" + padpath + "'), require = ts.require, exports = ts.exports, module = ts.module; // wrap line by gulp-twoside for providing twoside module\n\n";
       foot = "\n\n})();// wrap line by gulp-twoside"
     } else {
-      head = "/* wrap line by gulp-twoside for providing twoside module*/; var exports, module, require; (function(require, exports, module) {var ts;if (typeof window === 'object') { ts = twoside('" + padpath + "'), require = ts.require, exports = ts.exports, module = ts.module;} \n\n";
+      head = "var exports, module, require; \n(function(require, exports, module) {var ts;if (typeof window === 'object') { ts = twoside('" + padpath + "'), require = ts.require, exports = ts.exports, module = ts.module;} // wrap line by gulp-twoside for providing twoside module; \n\n";
       foot = "\n\n})(require, exports, module);// wrap line by gulp-twoside"
     }
     //console.log(file);
