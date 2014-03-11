@@ -61,7 +61,6 @@ class Pattern
     if @desttail then @dest = @destbase+@desttail
     else @dest = @destbase
 
-
 folders_src = 'src/'
 folders_coffee = folders_src
 folders_dest = 'dist/'
@@ -82,40 +81,32 @@ task 'coffee', -> from(files_coffee, {cache:'coffee'}).pipelog(coffee({bare: tru
 
 #task 'stylus', -> from(['css/**/*.css']).pipe(styl({compress: true})).to(folders_dest)
 
+merge = (files) -> files = files.split(' '); path = files[0]; (for file in files.splice(1) then path+file).join(' ')
+
 client = folders_destClient
 
-files_twoside = [folders_dest+'peasy.js', folders_dest+'logicpeasy.js', folders_dest+'linepeasy.js', folders_dest+'index.js']
-
-task 'transform:peasy', (cb) ->
-  if not distributing then return src(files_twoside).pipelog(twoside(folders_dest, 'peasy')).to(folders_dest)
-  src(files_twoside)
-  .pipelog(twoside(folders_dest, 'peasy', {only_wrap_for_browser:true})).to(client)
-  .pipe(concat("full-peasy-package.js")).pipe(size()).to(client)
-  #minify
-  .pipe(closureCompiler()).pipe(rename(suffix: "-min")).pipe(size()).to(client)
-  # generate index.js for part assembly.of the package
-  src(files_twoside.slice(0, files_twoside.length-1)).pipelog(twoside(folders_dest, 'peasy',
-  {only_wrap_for_browser:true, 'peasy':'index', 'logicpeasy':'index', 'linepeasy':'index'}))
-  .pipe(rename(suffix:'-index')).to(client)
-
-  # peasy.js, peasy.js+logicpeasy.js, peasy.js+linepeasy.js can become thred packages
-  # concat and min for partly assembled peasy package
-  for part in [{name: 'peasy', files: [client+'peasy-index.js']},
-                 {name: 'logicpeasy', files: [client+'peasy.js', client+'logicpeasy-index.js']},
-                 {name: 'linepeasy', files: [client+'peasy.js', client+'linepeasy-index.js']}]
-    src(part.files)
-    .pipe(concat(part.name+'-package.js')).pipe(size()).to(client)
-    .pipe(closureCompiler()).pipe(rename(suffix: "-min")).pipe(size()).to(client)
+# remove twoside temporalily. add them when distributing.
+#destLib = folders_dest+'lib/'
+#destLibClient = destLib+'client/'
+#files_taijiview = merge('nodes/ nodes index')+' '+'parser lex taijiview'
+#files_taijiview = for item in files_taijiview.split(' ') then destLib+item+'.js'
+#task 'transform:taijiview', (cb) ->
+#  if not distributing then return src(files_taijiview).pipelog(twoside(destLib, 'taijiview')).to(destLib)
+#  src(files_taijiview)
+#  .pipelog(twoside(folders_dest, 'taijiview', {only_wrap_for_browser:true})).to(destLibClient)
+#  .pipe(concat("taijiview-package.js")).pipe(size()).to(destLibClient)
+#  #minify
+#  .pipe(closureCompiler()).pipe(rename(suffix: "-min")).pipe(size()).to(destLibClient)
 
 task 'make:samples', (cb) -> # twoside, concat
   # twoside and concat for samples
-  files = 'statemachine dsl arithmatic arithmatic2'
-  files = for name in files.split(' ') then folders_dest+'samples/'+name+'.js'
+  files = 'some .js examples filename for taijiview'
+  files = for name in files.split(' ') then folders_dest+'examples/'+name+'.js'
 #  console.log files.join(' ')
-  stream = src(files).pipelog(twoside(folders_dest+'samples', 'peasy/samples')) #, {only_wrap_for_browser:true}
-  if not distributing then return stream.to(folders_dest+'samples')
-  stream.pipe(concat('sample-concat.js')).pipe(size()) # when debuggin, dont concat
-  stream.to(folders_dest+'samples')
+  stream = src(files).pipelog(twoside(folders_dest+'examples', 'taijiview/examples')) #, {only_wrap_for_browser:true}
+  if not distributing then return stream.to(folders_dest+'examples')
+  stream.pipe(concat('examples-concat.js')).pipe(size()) # when debuggin, dont concat
+  stream.to(folders_dest+'examples')
 
 task 'make:test', (cb) -> # twoside, concat, minify
   # twoside and concat for test/karma
@@ -126,38 +117,31 @@ task 'make:test', (cb) -> # twoside, concat, minify
   .to(folders_dest+'test/karma')
 
 build = (callback) ->
-  runSequence('clean', ['copy', 'coffee'], ['transform:peasy', 'make:samples', 'make:test'], callback)
+  runSequence('clean', ['copy', 'coffee'], ['transform:taijiview', 'make:samples', 'make:test'], callback)
 # make is for debugging and test, dont concat and minify
 task 'make', (callback) -> distributing = false; build(callback)
 # dist is for release, so concat and minify packages
 task 'dist', (callback) -> distributing = true; build(callback)
-
-gulp.task 'browserify', ['coffee'], ->
-  src(folders_dest+'test/karma/karma-bundle.js').pipe(browserify({
-    insertGlobals : true,
-  #debug : !gulp.env.production
-  }))
-  .to(folders_dest+'test/karma')
 
 files_mocha = folders_dest+'test/mocha/**/*.js'
 
 onErrorContinue = (err) -> console.log(err.stack); @emit 'end'
 task 'mocha', ->  src(files_mocha).pipe(mocha({reporter: 'dot'})).on("error", onErrorContinue)
 
-merge = (files) -> files = files.split(' '); path = files[0]; (for file in files.splice(1) then path+file).join(' ')
-files_karma_debug = 'twoside peasy linepeasy logicpeasy index '+\
-  merge('samples/ statemachine dsl arithmatic arithmatic2')+' '+\
-  merge('test/karma/ peasy logicpeasy samples-arithmatic samples-arithmatic samples-arithmatic')
-files_karma_debug = for item in files_karma_debug.split(' ') then folders_dest+item+'.js'
-files_karma_dist = 'twoside client/full-peasy-package samples/sample-concat test/karma/karma-concat'
-files_karma_dist = for item in files_karma_dist.split(' ') then folders_dest+item+'.js'
-karmaOnce = karma({configFile: folders_dest+'test/karma-conf.js', action: 'run'})
-task 'karma1', -> src(files_karma_debug).pipe(karmaOnce)
-task 'karma1/dist', -> src(files_karma_dist).pipe(karmaOnce)
-karmaWatch = karma({configFile: folders_dest+'test/karma-conf.js', action: 'watch'})
-#console.log files_karma_dist.join(' ')
-task 'karma', -> src(files_karma_debug).pipe(karmaWatch)
-task 'karma/dist', -> src(files_karma_dist).pipe(karmaWatch)
+# removes content for karma, if need, please see the content in project peasy, and rewrite for taijiview.
+#files_karma_debug = 'twoside peasy linepeasy logicpeasy index '+\
+#  merge('samples/ statemachine dsl arithmatic arithmatic2')+' '+\
+#  merge('test/karma/ peasy logicpeasy samples-arithmatic samples-arithmatic samples-arithmatic')
+#files_karma_debug = for item in files_karma_debug.split(' ') then folders_dest+item+'.js'
+#files_karma_dist = 'twoside client/full-peasy-package samples/sample-concat test/karma/karma-concat'
+#files_karma_dist = for item in files_karma_dist.split(' ') then folders_dest+item+'.js'
+#karmaOnce = karma({configFile: folders_dest+'test/karma-conf.js', action: 'run'})
+#task 'karma1', -> src(files_karma_debug).pipe(karmaOnce)
+#task 'karma1/dist', -> src(files_karma_dist).pipe(karmaOnce)
+#karmaWatch = karma({configFile: folders_dest+'test/karma-conf.js', action: 'watch'})
+##console.log files_karma_dist.join(' ')
+#task 'karma', -> src(files_karma_debug).pipe(karmaWatch)
+#task 'karma/dist', -> src(files_karma_dist).pipe(karmaWatch)
 
 task 'runapp', shell.task ['node dist/examples/sockio/app.js']
 task 'express',  ->
@@ -176,6 +160,6 @@ task 'watch/all', -> ['watch/copy', 'watch/coffee', 'watch/mocha'] #  , 'watch/r
 
 task 'mocha/auto', ['watch/copy', 'watch/coffee', 'watch/mocha']
 task 'test', (callback) -> runSequence('make', ['mocha', 'karma1'], callback)
-task 'test/dist', (callback) -> runSequence('dist', ['mocha', 'karma1/dist'], callback)
+task 'test/dist', (callback) -> runSequence('dist', ['mocha'], callback)   #, 'karma1/dist'
 task 'default',['test']
 

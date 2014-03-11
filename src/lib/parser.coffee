@@ -22,7 +22,6 @@ exports = module.exports = class Parser extends peasy.Parser
     {memo, orp, char, may, any, eoi, identifier, follow, wrap, list, literal, select, base
     string} = self = @
 
-    @parse = (data, root=self.root, cur=0) -> super; self.lineno = 0; self.row = 0
     @parseFile = (file) ->
     @char = (c) -> -> 
       if self.data[self.cur]==c

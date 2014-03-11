@@ -1,1 +1,1 @@
-module.exports = require './lib/taijiview.coffee'
+module.exports = require './lib/taijiview'

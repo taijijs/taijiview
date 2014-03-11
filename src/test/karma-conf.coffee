@@ -10,8 +10,6 @@ module.exports = (config) ->
       outputDir: 'dist/test/karma/html',
       templatePath: 'src/test/jasmine-template.html'
     files: [
-      '../public/js/lodash.js'
-      '../public/js/jquery.js'
     ]
     exclude: []
     #after switching from win7 64bit to win7 32bit, dsable many services, karma say chrome have not captured in 6000ms. use 9876 ok.
